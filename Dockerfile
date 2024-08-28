@@ -8,6 +8,9 @@ RUN apt-get update && apt-get install -y \
     ros-humble-cv-bridge \
     && rm -rf /var/lib/apt/lists/*
 
+# Create the /app directory
+RUN mkdir /app
+
 # Set up the workspace
 WORKDIR /ros2_ws/src/image_stitcher
 
