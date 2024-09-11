@@ -1,6 +1,10 @@
 #include <rclcpp/rclcpp.hpp>
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/msg/image.hpp>
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
 #include <filesystem>
 #include <iostream>
 
@@ -9,30 +13,43 @@ class ImageStitcher : public rclcpp::Node
 public:
     ImageStitcher() : Node("image_stitcher")
     {
+        left_sub_.subscribe(this, "/left_camera/image_raw");
+        right_sub_.subscribe(this, "/right_camera/image_raw");
+
+        sync_ = std::make_shared<Synchronizer>(SyncPolicy(10), left_sub_, right_sub_);
+        sync_->registerCallback(std::bind(&ImageStitcher::image_callback, this, std::placeholders::_1, std::placeholders::_2));
+
         timer_ = this->create_wall_timer(
             std::chrono::seconds(1),
-            std::bind(&ImageStitcher::stitch_images, this));
+            std::bind(&ImageStitcher::timer_callback, this));
     }
 
 private:
-    void stitch_images()
-    {   
-        RCLCPP_INFO(this->get_logger(), "Current working directory: %s", std::filesystem::current_path().c_str());
-        RCLCPP_INFO(this->get_logger(), "Contents of /app directory:");
-        for (const auto & entry : std::filesystem::directory_iterator("/app")) {
-            RCLCPP_INFO(this->get_logger(), "%s", entry.path().c_str());
+    void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr& left_msg,
+                        const sensor_msgs::msg::Image::ConstSharedPtr& right_msg)
+    {
+        try {
+            cv_bridge::CvImagePtr left_cv_ptr = cv_bridge::toCvCopy(left_msg, sensor_msgs::image_encodings::BGR8);
+            cv_bridge::CvImagePtr right_cv_ptr = cv_bridge::toCvCopy(right_msg, sensor_msgs::image_encodings::BGR8);
+
+            left_img_ = left_cv_ptr->image;
+            right_img_ = right_cv_ptr->image;
+
+            RCLCPP_INFO(this->get_logger(), "Received synchronized images");
+        } catch (cv_bridge::Exception& e) {
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
         }
+    }
 
-        cv::Mat left_img = cv::imread("/app/left.jpg");
-        cv::Mat right_img = cv::imread("/app/right.jpg");
-
-        if (left_img.empty() || right_img.empty())
+    void timer_callback()
+    {
+        if (left_img_.empty() || right_img_.empty())
         {
-            RCLCPP_ERROR(this->get_logger(), "Failed to read input images");
+            RCLCPP_WARN(this->get_logger(), "No images received yet");
             return;
         }
 
-        cv::Mat result = stitch(left_img, right_img);
+        cv::Mat result = stitch(left_img_, right_img_);
 
         if (!result.empty())
         {
@@ -116,7 +133,14 @@ private:
         return result;
     }
 
+    message_filters::Subscriber<sensor_msgs::msg::Image> left_sub_;
+    message_filters::Subscriber<sensor_msgs::msg::Image> right_sub_;
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image> SyncPolicy;
+    typedef message_filters::Synchronizer<SyncPolicy> Synchronizer;
+    std::shared_ptr<Synchronizer> sync_;
+
     rclcpp::TimerBase::SharedPtr timer_;
+    cv::Mat left_img_, right_img_;
 };
 
 int main(int argc, char* argv[])
