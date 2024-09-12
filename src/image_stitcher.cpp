@@ -19,8 +19,10 @@ public:
         sync_ = std::make_shared<Synchronizer>(SyncPolicy(10), left_sub_, right_sub_);
         sync_->registerCallback(std::bind(&ImageStitcher::image_callback, this, std::placeholders::_1, std::placeholders::_2));
 
+        stitched_pub_ = this->create_publisher<sensor_msgs::msg::Image>("/stitched_image", 10);
+
         timer_ = this->create_wall_timer(
-            std::chrono::seconds(1),
+            std::chrono::milliseconds(100),  // Publish at 10 Hz
             std::bind(&ImageStitcher::timer_callback, this));
     }
 
@@ -53,14 +55,17 @@ private:
 
         if (!result.empty())
         {
-            cv::imwrite("/app/stitched_output.jpg", result);
-            RCLCPP_INFO(this->get_logger(), "Stitched image saved as 'stitched_output.jpg'");
+            // Convert the stitched image to a ROS message and publish it
+            sensor_msgs::msg::Image::SharedPtr output_msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", result).toImageMsg();
+            stitched_pub_->publish(*output_msg);
+            RCLCPP_INFO(this->get_logger(), "Published stitched image");
         }
         else
         {
             RCLCPP_ERROR(this->get_logger(), "Failed to stitch images");
         }
     }
+
 
     cv::Mat stitch(const cv::Mat& left_img, const cv::Mat& right_img)
     {
@@ -133,6 +138,7 @@ private:
         return result;
     }
 
+
     message_filters::Subscriber<sensor_msgs::msg::Image> left_sub_;
     message_filters::Subscriber<sensor_msgs::msg::Image> right_sub_;
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image, sensor_msgs::msg::Image> SyncPolicy;
@@ -140,6 +146,7 @@ private:
     std::shared_ptr<Synchronizer> sync_;
 
     rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr stitched_pub_;
     cv::Mat left_img_, right_img_;
 };
 
