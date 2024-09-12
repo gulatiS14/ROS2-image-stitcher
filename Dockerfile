@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     libopencv-dev \
     ros-humble-cv-bridge \
+    ros-humble-message-filters \
     && rm -rf /var/lib/apt/lists/*
 
 # Create the /app directory
@@ -15,8 +16,7 @@ RUN mkdir /app
 WORKDIR /ros2_ws/src/image_stitcher
 
 # Copy the package files
-COPY CMakeLists.txt package.xml ./
-COPY src ./src
+COPY . /ros2_ws/src/image_stitcher
 
 # Build the package
 WORKDIR /ros2_ws
