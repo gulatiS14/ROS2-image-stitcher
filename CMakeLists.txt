@@ -1,4 +1,3 @@
-# CMakeLists.txt
 cmake_minimum_required(VERSION 3.8)
 project(image_stitcher)
 
@@ -8,22 +7,25 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(cv_bridge REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 
 add_executable(image_stitcher src/image_stitcher.cpp)
+target_include_directories(image_stitcher PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(image_stitcher PUBLIC c_std_99 cxx_std_17)
 ament_target_dependencies(image_stitcher
   rclcpp
-  opencv
+  OpenCV
   cv_bridge
   sensor_msgs
   message_filters
 )
 
-install(TARGETS
-  image_stitcher
+install(TARGETS image_stitcher
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

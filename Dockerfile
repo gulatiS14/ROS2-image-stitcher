@@ -6,14 +6,13 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     libopencv-dev \
     ros-humble-cv-bridge \
+    ros-humble-vision-opencv \
+    ros-humble-image-transport \
     ros-humble-message-filters \
     && rm -rf /var/lib/apt/lists/*
 
-# Create the /app directory
-RUN mkdir /app
-
-# Set up the workspace
-WORKDIR /ros2_ws/src/image_stitcher
+# Create a ROS workspace
+WORKDIR /ros2_ws/src
 
 # Copy the package files
 COPY . /ros2_ws/src/image_stitcher

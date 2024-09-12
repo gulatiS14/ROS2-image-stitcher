@@ -3,16 +3,16 @@
 <package format="3">
   <name>image_stitcher</name>
   <version>0.0.1</version>
-  <description>ROS2 Image Stitcher</description>
+  <description>ROS2 node for stitching images</description>
   <maintainer email="sgulati@u.nus.edu">Your Name</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>cv_bridge</depend>
-  <depend>opencv</depend>
   <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>image_transport</depend>
   <depend>message_filters</depend>
 
   <test_depend>ament_lint_auto</test_depend>
